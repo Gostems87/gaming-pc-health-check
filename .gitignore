@@ -1,0 +1,13 @@
+# Scan results contain details of the PC they ran on: never commit them
+pc-health-check-*/
+diagnostic.json
+diagnostic-summary.txt
+apply-*.log
+undo-*.json
+recheck-*.txt
+PC-HEALTH-REPORT.md
+
+# Local clutter
+.vscode/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Gaming PC Health Check: what it does</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Chivo+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4f1ea;
+    --paper-deep: #ebe6da;
+    --ink: #16150f;
+    --ink-soft: #4a483e;
+    --ink-faint: #7d796c;
+    --rule: #d3cdbf;
+    --signal: #e4572e;
+    --signal-ink: #b83c1b;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--paper); }
+  body {
+    font-family: "Archivo", "Segoe UI", sans-serif;
+    font-variation-settings: "wdth" 100;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 12mm 14mm 10mm;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .mono { font-family: "Chivo Mono", Consolas, monospace; }
+
+  /* Header */
+  header {
+    display: grid;
+    grid-template-columns: 1fr 52mm;
+    gap: 8mm;
+    align-items: end;
+    padding-bottom: 5mm;
+    border-bottom: 2.5px solid var(--ink);
+  }
+  .kicker {
+    font-family: "Chivo Mono", Consolas, monospace;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    margin-bottom: 3.5mm;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kicker .dot { width: 9px; height: 9px; background: var(--signal); display: inline-block; }
+  h1 {
+    font-variation-settings: "wdth" 118;
+    font-weight: 820;
+    font-size: 45px;
+    line-height: 0.93;
+    letter-spacing: -0.012em;
+  }
+  h1 .second { display: block; }
+  .lede {
+    margin-top: 3.5mm;
+    font-size: 13.6px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    max-width: 122mm;
+  }
+  .lede strong { color: var(--ink); font-weight: 650; }
+  .certificate {
+    border: 1.5px solid var(--ink);
+    padding: 3.5mm 3.8mm 3mm;
+    font-family: "Chivo Mono", Consolas, monospace;
+    font-size: 9.6px;
+    line-height: 1.25;
+  }
+  .certificate .title { font-weight: 500; margin-bottom: 2.5mm; letter-spacing: 0.02em; }
+  .certificate dl { display: grid; grid-template-columns: 1fr auto; row-gap: 1.3mm; column-gap: 3mm; }
+  .certificate dt { color: var(--ink-soft); }
+  .certificate dd { text-align: right; font-weight: 500; }
+  .certificate dd.hot { color: var(--signal-ink); }
+
+  h2 {
+    font-variation-settings: "wdth" 108;
+    font-weight: 750;
+    font-size: 15.5px;
+    letter-spacing: -0.005em;
+    margin-bottom: 2.2mm;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  h2 .count { font-family: "Chivo Mono", Consolas, monospace; font-weight: 400; font-size: 10.5px; color: var(--ink-faint); }
+
+  /* Inspection sheet */
+  section.inspect { margin-top: 5mm; }
+  .sheet {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8mm;
+  }
+  .item {
+    display: grid;
+    grid-template-columns: 9mm 1fr;
+    padding: 1.9mm 0 2.1mm;
+    border-top: 1px solid var(--rule);
+  }
+  .item .no { font-family: "Chivo Mono", Consolas, monospace; font-size: 11px; color: var(--signal-ink); padding-top: 1.5px; }
+  .item .name { font-weight: 680; font-size: 13.2px; line-height: 1.2; }
+  .item .what { font-size: 11.4px; line-height: 1.36; color: var(--ink-soft); margin-top: 0.8mm; }
+
+  /* Steps */
+  section.run { margin-top: 4.5mm; }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4mm;
+    position: relative;
+  }
+  .step { border-top: 2.5px solid var(--ink); padding-top: 2.6mm; }
+  .step:nth-child(4) { border-top-color: var(--signal); }
+  .step .n {
+    font-variation-settings: "wdth" 120;
+    font-weight: 800;
+    font-size: 21px;
+    line-height: 1;
+  }
+  .step:nth-child(4) .n { color: var(--signal-ink); }
+  .step .t { font-weight: 680; font-size: 12.6px; margin-top: 1.6mm; line-height: 1.2; }
+  .step .d { font-size: 11px; line-height: 1.36; color: var(--ink-soft); margin-top: 1.2mm; }
+
+  /* Lower half */
+  .lower {
+    margin-top: 5mm;
+    display: grid;
+    grid-template-columns: 1fr 86mm;
+    gap: 8mm;
+    padding-bottom: 5mm;
+  }
+  .rules ul { list-style: none; }
+  .rules li {
+    display: grid;
+    grid-template-columns: 6mm 1fr;
+    font-size: 11.6px;
+    line-height: 1.36;
+    padding: 1.6mm 0;
+    border-top: 1px solid var(--rule);
+  }
+  .rules li::before {
+    content: "";
+    width: 7px; height: 7px;
+    background: var(--ink);
+    margin-top: 5px;
+  }
+  .rules li strong { font-weight: 680; }
+
+  .proof {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4mm 4.5mm 3.5mm;
+    align-self: start;
+  }
+  .proof h2 { color: var(--paper); margin-bottom: 1mm; }
+  .proof .sub { font-size: 10.6px; color: #b9b4a6; line-height: 1.35; margin-bottom: 2mm; }
+  .proof ol { list-style: none; }
+  .proof li {
+    display: grid;
+    grid-template-columns: 24mm 1fr;
+    column-gap: 2.5mm;
+    padding: 1.4mm 0;
+    border-top: 1px solid #36342b;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #ddd8cb;
+  }
+  .proof li b {
+    font-variation-settings: "wdth" 112;
+    font-weight: 780;
+    font-size: 13.2px;
+    color: var(--signal);
+    line-height: 1.1;
+  }
+
+  footer {
+    margin-top: auto;
+    padding-top: 3.2mm;
+    border-top: 2.5px solid var(--ink);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 6mm;
+  }
+  footer .get { font-size: 12px; color: var(--ink-soft); }
+  footer .url {
+    font-family: "Chivo Mono", Consolas, monospace;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--ink);
+    margin-top: 1mm;
+  }
+  footer .url span { color: var(--signal-ink); }
+  footer .how { font-size: 10.8px; color: var(--ink-soft); margin-top: 1.4mm; }
+  footer .credit { font-family: "Chivo Mono", Consolas, monospace; font-size: 9.8px; color: var(--ink-faint); text-align: right; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <div class="kicker"><span class="dot"></span>A free Claude Code skill for Windows 10 and 11</div>
+      <h1>Gaming PC<span class="second">Health Check</span></h1>
+      <p class="lede">An MOT for your gaming PC, run by Claude from inside your AIOS. It <strong>inspects everything</strong>, explains what it found in plain English, and <strong>only fixes what you sign off</strong>.</p>
+    </div>
+    <div class="certificate" aria-label="At a glance">
+      <div class="title">AT A GLANCE</div>
+      <dl>
+        <dt>Areas inspected</dt><dd>8</dd>
+        <dt>Scan time</dt><dd>~1 min</dd>
+        <dt>Unapproved changes</dt><dd class="hot">0</dd>
+        <dt>Undo file</dt><dd>always</dd>
+        <dt>BIOS steps done by</dt><dd>you</dd>
+        <dt>Cost</dt><dd>free</dd>
+      </dl>
+    </div>
+  </header>
+
+  <section class="inspect">
+    <h2>What it inspects <span class="count">08 areas</span></h2>
+    <div class="sheet">
+      <div class="item"><span class="no">01</span><div><div class="name">Hardware</div><div class="what">Processor, graphics card, motherboard and drives: what you have and how healthy it is.</div></div></div>
+      <div class="item"><span class="no">05</span><div><div class="name">Graphics and screens</div><div class="what">Driver age, Resizable BAR, G-Sync or FreeSync, and every monitor on its native resolution and top refresh rate.</div></div></div>
+      <div class="item"><span class="no">02</span><div><div class="name">BIOS</div><div class="what">How old yours is, what newer versions actually fix, and whether you need one at all.</div></div></div>
+      <div class="item"><span class="no">06</span><div><div class="name">Conflicts</div><div class="what">Two VPNs, two antivirus apps, three recorders, RGB apps fighting, "booster" apps undoing your settings.</div></div></div>
+      <div class="item"><span class="no">03</span><div><div class="name">Memory</div><div class="what">Is your RAM running at the speed you paid for (XMP or EXPO), and in dual channel?</div></div></div>
+      <div class="item"><span class="no">07</span><div><div class="name">Crash history</div><div class="what">Hardware errors, blue screens, sudden power-offs, and which games keep crashing.</div></div></div>
+      <div class="item"><span class="no">04</span><div><div class="name">Windows settings</div><div class="what">Game Mode, GPU scheduling, power plan, mouse acceleration, hibernation, startup apps.</div></div></div>
+      <div class="item"><span class="no">08</span><div><div class="name">Disk space</div><div class="what">Junk it can clear safely, plus old recordings and games you haven't played in a year.</div></div></div>
+    </div>
+  </section>
+
+  <section class="run">
+    <h2>How a check runs</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div class="t">Quick quiz</div><div class="d">What you play, what matters most, what's bugging you.</div></div>
+      <div class="step"><div class="n">2</div><div class="t">Scan</div><div class="d">About a minute. Read-only: nothing changes.</div></div>
+      <div class="step"><div class="n">3</div><div class="t">Report</div><div class="d">Already right, safe fixes, needs you, your call.</div></div>
+      <div class="step"><div class="n">4</div><div class="t">Fixes you approve</div><div class="d">Each one logged with an undo first.</div></div>
+      <div class="step"><div class="n">5</div><div class="t">BIOS cards</div><div class="d">Step-by-step cards you follow, then it checks the result.</div></div>
+    </div>
+  </section>
+
+  <div class="lower">
+    <section class="rules">
+      <h2>Ground rules it never breaks</h2>
+      <ul>
+        <li><span><strong>Nothing changes without your yes,</strong> and every setting it touches goes in an undo file first.</span></li>
+        <li><span><strong>It never touches your BIOS.</strong> You get a printed-style card with what normal looks like and when to stop.</span></li>
+        <li><span><strong>Your games, clips and files are yours.</strong> Nothing is deleted without asking about each one.</span></li>
+        <li><span><strong>No snake oil.</strong> No "FPS boost" registry packs, no overclocking past your memory's own factory profile.</span></li>
+        <li><span><strong>Results stay on your PC,</strong> in a dated folder with the full report.</span></li>
+      </ul>
+    </section>
+
+    <aside class="proof">
+      <h2>From the first run</h2>
+      <p class="sub">Built from a real tune-up of my own gaming PC.</p>
+      <ol>
+        <li><b>24.5 GB</b><span>junk cleared from the Windows drive</span></li>
+        <li><b>278 GB</b><span>old recordings found and cleared, with my OK</span></li>
+        <li><b>7 &rarr; 0</b><span>devices missing drivers, Wi-Fi included</span></li>
+        <li><b>4800&rarr;5600</b><span>MT/s memory, stress-tested clean</span></li>
+        <li><b>3 &rarr; 1</b><span>VPN apps, and screen tearing fixed</span></li>
+        <li><b>Caught</b><span>Secure Boot switched off by a BIOS reset</span></li>
+      </ol>
+    </aside>
+  </div>
+
+  <footer>
+    <div>
+      <div class="get">Get it free on GitHub</div>
+      <div class="url">github.com/<span>Gostems87</span>/gaming-pc-health-check</div>
+      <div class="how">To install, ask Claude Code: "Install the skill from that link into my global skills folder."</div>
+    </div>
+    <div class="credit">Built by Richard Gostelow<br>MIT licence &middot; Windows 10 and 11</div>
+  </footer>
+
+</div>
+</body>
+</html>
