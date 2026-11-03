@@ -1,7 +1,7 @@
 # Disk space
 
 ## Safe to clear (with a yes; `apply-safe.ps1`)
-- **Temporary files** older than 7 days: `-CleanTemp`. Claude Code's own working folder (`%TEMP%\claude`) is always skipped, links are never followed, a temp folder that points anywhere unusual (a drive root, the user profile) is refused, and nothing runs while Windows has a restart pending.
+- **Your own temporary files** older than 7 days: `-CleanTemp`. Windows' machine-wide temp folder is left to Windows' own tool (Settings > System > Storage > Temporary files). Claude Code's own working folder (`%TEMP%\claude`) is always skipped, links are never followed (and every delete re-checks its path), a temp folder that points anywhere unusual (a drive root, the user profile) is refused, and nothing runs while Windows has a restart pending.
 - **NVIDIA downloaded installers and app crash dumps:** `-CleanInstallerLeftovers`. If crashes are being investigated, read the dumps first.
 - **The Windows component store:** `-CleanComponentStore` (admin, several minutes). It does not use /ResetBase, so recent updates can still be uninstalled.
 - **hiberfil.sys:** `-HibernateOff` on desktops only.

@@ -70,7 +70,7 @@ Never interrupt a flash. It takes a few minutes and may restart more than once.
    - Easiest: OCCT (free for personal use), Memory test.
    - Thorough: TestMem5 (github.com/CoolCmd/TestMem5) with anta777's DDR5 or DDR4 config. On X3D processors use the "Ryzen3D" config: their large cache hides memory faults from ordinary tests. Run it elevated. It may raise "To enable AWE, you must run with Administrator privileges!" boxes, several per launch. Each freezes a test worker until OK is clicked, and boxes left by a killed run stay queued and block the next launch, so click them all OK. It then tests normally without AWE. Do not judge whether a worker is alive by its memory use.
    - Windows Memory Diagnostic is too gentle to count.
-3. **A day of normal gaming,** then `health-recheck.ps1 -Since "<time of the change>"`. Any WHEA event 19 or 47, or a blue screen, means one notch down.
+3. **A day of normal gaming,** then `health-recheck.ps1 -Since "yyyy-MM-dd HH:mm"` (the time of the change, in that exact form). Any WHEA event 19 or 47, or a blue screen, means one notch down.
 
 ## Secure Boot and TPM
 - **Secure Boot:** ASUS: Boot > Secure Boot > OS Type "Windows UEFI mode". MSI, Gigabyte, ASRock: Secure Boot > Enabled. Needs Windows in UEFI mode and CSM off.

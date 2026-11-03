@@ -20,8 +20,8 @@
 
 .PARAMETER Elevate
     Relaunch as administrator (one UAC prompt). Needed for GPU scheduling, hibernation,
-    the Windows temp folder, component clean-up, machine-wide startup entries and the
-    restore point. If the prompt is declined while -Apply is set, nothing is changed.
+    component clean-up, machine-wide startup entries and the restore point. If the
+    prompt is declined while -Apply is set, nothing is changed.
 
 .PARAMETER OutDir
     Folder for the change log and undo file. Default: .\pc-health-check-YYYY-MM-DD
@@ -84,6 +84,9 @@ $DisableStartup = @($DisableStartup | ForEach-Object { $_ -split ';' } | Where-O
 # Quotes in any text value would break the admin relaunch's command line: refuse them.
 foreach ($v in @($OutDir, $Undo) + $DisableStartup) {
     if ($v -and $v.Contains('"')) { Write-Host 'Refusing to run: a folder, file or startup name contains a double quote.'; exit 2 }
+}
+foreach ($v in $DisableStartup) {
+    if ($v.TrimEnd().EndsWith('\')) { Write-Host ('Refusing to run: the startup name "' + $v + '" ends with a backslash. Switch that one off in Task Manager > Startup apps instead.'); exit 2 }
 }
 
 # Elevated by a different account (for example a parent typing admin credentials)?
@@ -251,6 +254,26 @@ function Get-FolderEntries([string]$Root, [string[]]$SkipTop = @()) {
     return [pscustomobject]@{ files = $files; dirs = $dirs }
 }
 
+# True only if the item and every folder between it and Root is a real folder (no links),
+# and the item really sits inside Root.
+function Test-ChainClean([string]$Root, [string]$ItemPath) {
+    try {
+        $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+        $full = [IO.Path]::GetFullPath($ItemPath)
+    } catch { return $false }
+    if (-not $full.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase)) { return $false }
+    $item = Get-Item -LiteralPath $full -Force -ErrorAction SilentlyContinue
+    if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $false }
+    $dir = Split-Path $full -Parent
+    while ($dir) {
+        $d = Get-Item -LiteralPath $dir -Force -ErrorAction SilentlyContinue
+        if (-not $d -or (($d.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $false }
+        if ($dir.TrimEnd('\') -ieq $rootFull) { return $true }
+        $dir = Split-Path $dir -Parent
+    }
+    return $false
+}
+
 function Clear-FolderContents {
     param([string]$Path, [string]$Label, [string[]]$Leaves, [int]$MinAgeDays = 7, [string[]]$Skip = @())
     if (-not (Test-Path -LiteralPath $Path)) { Write-Log ('  ' + $Label + ': not present'); return }
@@ -261,16 +284,21 @@ function Clear-FolderContents {
     $oldGB = [math]::Round((($old | Measure-Object Length -Sum).Sum) / 1GB, 2)
     $ageText = $(if ($MinAgeDays -gt 0) { 'older than ' + $MinAgeDays + ' days' } else { 'of any age' })
     if (-not $Apply) { Write-Log ('  PREVIEW ' + $Label + ': would delete ' + $old.Count + ' file(s) ' + $ageText + ', about ' + $oldGB + ' GB, from ' + $Path); return }
-    $freed = [double]0; $removed = 0
+    $freed = [double]0; $removed = 0; $skippedLinks = 0
     foreach ($f in $old) {
+        # Re-check just before deleting: if any folder on the way down has been swapped for a
+        # link since the listing, skip the file (guards against redirect tricks).
+        if (-not (Test-ChainClean $Path $f.FullName)) { $skippedLinks++; continue }
         $len = $f.Length
         Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
         if (-not (Test-Path -LiteralPath $f.FullName)) { $freed += $len; $removed++ }
     }
     foreach ($d in ($entries.dirs | Sort-Object { $_.path.Length } -Descending)) {
         if ($d.written -ge $cutoff) { continue }
+        if (-not (Test-ChainClean $Path (Join-Path $d.path 'x'))) { continue }
         if (-not (Get-ChildItem -LiteralPath $d.path -Force -ErrorAction SilentlyContinue | Select-Object -First 1)) { Remove-Item -LiteralPath $d.path -Force -ErrorAction SilentlyContinue }
     }
+    if ($skippedLinks -gt 0) { Write-Log ('  NOTE: ' + $skippedLinks + ' file(s) skipped because a folder on their path had become a link.') }
     Write-Log ('  CLEARED ' + $Label + ': ' + $removed + ' file(s), ' + [math]::Round($freed / 1GB, 2) + ' GB (files in use were left alone)')
 }
 
@@ -310,7 +338,8 @@ if ($Undo) {
     foreach ($c in $changes) {
         switch ($c.kind) {
             'reg' {
-                if (-not (Test-AllowedValue $c.path $c.name $null) -or ($c.existed -and $validKinds -notcontains $c.valueKind)) { Write-Log ('  REFUSED (not a setting this tool changes) ' + $c.path + ' ' + $c.name); continue }
+                $kindToCheck = $(if ($c.existed) { [string]$c.valueKind } else { $null })
+                if (-not (Test-AllowedValue $c.path $c.name $kindToCheck) -or ($c.existed -and $validKinds -notcontains $c.valueKind)) { Write-Log ('  REFUSED (not a setting this tool changes) ' + $c.path + ' ' + $c.name); continue }
                 if ($c.path -like 'HKCU:*' -and $UserMismatch) { Write-Log ('  SKIPPED (different account; run without -Elevate) ' + $c.label); continue }
                 if ($c.path -like 'HKLM:*' -and -not $isAdmin) { [void]$NeedsAdmin.Add($c.label); Write-Log ('  SKIPPED (needs admin) ' + $c.label); continue }
                 if (-not $Apply) { Write-Log ('  PREVIEW restore ' + $c.label + $(if ($c.existed) { ' to its old value' } else { ' by removing the value (it did not exist before)' })); continue }
@@ -479,8 +508,9 @@ if ($CleanTemp) {
         # Claude Code keeps its own working files in %TEMP%\claude: never touch them.
         if ($UserMismatch) { Write-Log '  SKIPPED your temp folder (admin rights came from a different account)' }
         else { Clear-FolderContents -Path $env:TEMP -Label 'Your temp folder' -Leaves @('Temp') -MinAgeDays 7 -Skip @('claude') }
-        if ($isAdmin) { Clear-FolderContents -Path ($env:SystemRoot + '\Temp') -Label 'Windows temp folder' -Leaves @('Temp') -MinAgeDays 7 }
-        else { [void]$NeedsAdmin.Add('Windows temp folder'); Write-Log '  SKIPPED (needs admin) Windows temp folder' }
+        # The machine-wide C:\Windows\Temp is deliberately left to Windows' own tool
+        # (Settings > System > Storage > Temporary files), which cleans it safely as admin.
+        Write-Log '  Windows'' own temp folder: use Settings > System > Storage > Temporary files.'
     }
 }
 

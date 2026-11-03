@@ -488,6 +488,16 @@ Invoke-Section 'memory' {
         if ($sticks.Count -eq 3) { Add-Flag 'memory' 'check' 'Three memory sticks: an odd number means uneven channels. Two matched sticks (or four) is the right shape.' }
         if ($sticks.Count -eq 4 -and ($mods | Where-Object { $_.type -eq 'DDR5' })) { Add-Flag 'memory' 'info' 'Four DDR5 sticks: most platforms cannot run four at the full rated speed. If XMP/EXPO will not hold, that is why; two larger sticks is the fix.' }
         if ($parts.Count -gt 1) { Add-Flag 'memory' 'check' ('Mixed memory part numbers (' + ($parts -join ', ') + '). Mixed kits are a common reason XMP/EXPO will not boot.') }
+        # Dual channel: read the channel letter from each stick's bank/slot label where the
+        # board reports one (for example "P0 CHANNEL A", "ChannelB-DIMM1").
+        if ($sticks.Count -ge 2) {
+            $chans = @($mods | ForEach-Object { if ((([string]$_.bank) + ' ' + ([string]$_.slot)) -match 'CHANNEL\s*-?\s*([A-H])\b') { $matches[1].ToUpper() } else { $null } })
+            if (@($chans | Where-Object { $_ }).Count -eq $mods.Count) {
+                $distinct = @($chans | Sort-Object -Unique)
+                if ($distinct.Count -eq 1) { Add-Flag 'memory' 'fix' ('All ' + $mods.Count + ' memory sticks report the same channel (' + $distinct[0] + '), which means single-channel memory and a big loss in CPU-heavy games. Check the motherboard manual for the two-stick slots (usually A2 and B2) and move one stick; a hardware step for the user.') }
+                else { Add-Flag 'memory' 'good' ('Memory is spread across channels ' + ($distinct -join ' and ') + ' (dual channel).') }
+            }
+        }
     }
     [ordered]@{
         totalSlots = $slots; sticksFitted = $sticks.Count; modules = $mods
